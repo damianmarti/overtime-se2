@@ -61,6 +61,12 @@ const Home: NextPage = () => {
   const [dataSource, setDataSource] = useState<string | null>(null);
   const [expandedSports, setExpandedSports] = useState<Set<string>>(new Set());
   const [expandedLeagues, setExpandedLeagues] = useState<Set<string>>(new Set());
+  const [selectedMarket, setSelectedMarket] = useState<any>(null);
+  const [showQuoteModal, setShowQuoteModal] = useState(false);
+  const [buyInAmount, setBuyInAmount] = useState("");
+  const [selectedPosition, setSelectedPosition] = useState<number>(0);
+  const [quoteResponse, setQuoteResponse] = useState<any>(null);
+  const [loadingQuote, setLoadingQuote] = useState(false);
 
   const url = `https://api.overtime.io/overtime-v2/networks/${networkId}/markets`;
 
@@ -149,6 +155,71 @@ const Home: NextPage = () => {
       }
       return newSet;
     });
+  };
+
+  const openQuoteModal = (market: any) => {
+    setSelectedMarket(market);
+    setShowQuoteModal(true);
+    setBuyInAmount("");
+    setSelectedPosition(0);
+    setQuoteResponse(null);
+  };
+
+  const closeQuoteModal = () => {
+    setShowQuoteModal(false);
+    setSelectedMarket(null);
+    setBuyInAmount("");
+    setSelectedPosition(0);
+    setQuoteResponse(null);
+  };
+
+  const getQuote = async () => {
+    if (!buyInAmount || !selectedMarket) return;
+
+    setLoadingQuote(true);
+    try {
+      const tradeDataPayload = [
+        {
+          gameId: selectedMarket.gameId,
+          sportId: selectedMarket.subLeagueId,
+          typeId: selectedMarket.typeId,
+          maturity: selectedMarket.maturity,
+          status: selectedMarket.status,
+          line: selectedMarket.line,
+          playerId: selectedMarket.playerProps?.playerId,
+          odds: selectedMarket.odds?.map((odd: any) => odd.normalizedImplied) || [],
+          merkleProof: selectedMarket.proof,
+          position: selectedPosition,
+          combinedPositions: selectedMarket.combinedPositions,
+          live: false,
+        },
+      ];
+
+      const payload = {
+        buyInAmount: parseInt(buyInAmount),
+        tradeData: tradeDataPayload,
+      };
+
+      console.log("Sending quote request:", payload);
+      console.log("Selected market:", selectedMarket);
+
+      const response = await fetch(`https://api.overtime.io/overtime-v2/networks/${networkId}/quote`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": process.env.NEXT_PUBLIC_OVERTIME_API_KEY || "",
+        },
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json();
+      console.log("Quote response:", data);
+      setQuoteResponse(data);
+    } catch (error) {
+      console.error("Error fetching quote:", error);
+      setQuoteResponse({ error: "Failed to fetch quote" });
+    } finally {
+      setLoadingQuote(false);
+    }
   };
 
   console.log(markets);
@@ -323,7 +394,12 @@ const Home: NextPage = () => {
                                         )}
 
                                         <div className="card-actions justify-end mt-4">
-                                          <button className="btn btn-sm btn-primary">Place Bet</button>
+                                          <button
+                                            className="btn btn-sm btn-primary"
+                                            onClick={() => openQuoteModal(market)}
+                                          >
+                                            Place Bet
+                                          </button>
                                         </div>
                                       </div>
                                     </div>
@@ -372,6 +448,173 @@ const Home: NextPage = () => {
           </div>
         </div>
       </div>
+
+      {/* Quote Modal */}
+      {showQuoteModal && (
+        <div className="modal modal-open">
+          <div className="modal-box max-w-2xl">
+            <h3 className="font-bold text-lg mb-4">
+              Get Quote: {selectedMarket?.homeTeam} vs {selectedMarket?.awayTeam}
+            </h3>
+
+            <div className="space-y-4">
+              {/* Position Selector */}
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text font-semibold">Select Position</span>
+                </label>
+                <div className="flex gap-2">
+                  <button
+                    className={`btn flex-1 ${selectedPosition === 0 ? "btn-primary" : "btn-outline"}`}
+                    onClick={() => setSelectedPosition(0)}
+                  >
+                    Home: {selectedMarket?.homeTeam}
+                  </button>
+                  <button
+                    className={`btn flex-1 ${selectedPosition === 1 ? "btn-primary" : "btn-outline"}`}
+                    onClick={() => setSelectedPosition(1)}
+                  >
+                    Away: {selectedMarket?.awayTeam}
+                  </button>
+                  {selectedMarket?.odds && selectedMarket.odds.length > 2 && (
+                    <button
+                      className={`btn flex-1 ${selectedPosition === 2 ? "btn-primary" : "btn-outline"}`}
+                      onClick={() => setSelectedPosition(2)}
+                    >
+                      Draw
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Buy In Amount Input */}
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text font-semibold">Buy In Amount (USD)</span>
+                  <span className="label-text-alt text-xs opacity-70">Min: 3 USDC</span>
+                </label>
+                <input
+                  type="number"
+                  placeholder="Enter amount (minimum 3 USDC)"
+                  className="input input-bordered w-full"
+                  value={buyInAmount}
+                  onChange={e => {
+                    const value = e.target.value;
+                    // Only allow integers
+                    if (value === "" || /^\d+$/.test(value)) {
+                      setBuyInAmount(value);
+                    }
+                  }}
+                  min="3"
+                  step="1"
+                />
+                {buyInAmount && parseInt(buyInAmount) < 3 && (
+                  <label className="label">
+                    <span className="label-text-alt text-error">Minimum buy-in amount is 3 USDC</span>
+                  </label>
+                )}
+              </div>
+
+              {/* Get Quote Button */}
+              <div className="flex gap-2">
+                <button
+                  className="btn btn-primary"
+                  onClick={getQuote}
+                  disabled={loadingQuote || !buyInAmount || parseInt(buyInAmount) < 3}
+                >
+                  {loadingQuote ? (
+                    <>
+                      <span className="loading loading-spinner"></span>
+                      Getting Quote...
+                    </>
+                  ) : (
+                    "Get Quote"
+                  )}
+                </button>
+              </div>
+
+              {/* Quote Response */}
+              {quoteResponse && (
+                <div className="mt-6 p-4 bg-base-200 rounded-lg">
+                  {quoteResponse.quoteData?.error ? (
+                    <div className="alert alert-error">
+                      <span>{quoteResponse.quoteData.error}</span>
+                    </div>
+                  ) : quoteResponse.error ? (
+                    <div className="alert alert-error">
+                      <span>{quoteResponse.error}</span>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <h4 className="font-bold text-base">Quote Summary</h4>
+
+                      <div className="grid grid-cols-3 gap-2">
+                        {/* Buy In Amount */}
+                        {quoteResponse.quoteData?.buyInAmountInUsd && (
+                          <div className="bg-base-100 p-2 rounded border border-base-300">
+                            <p className="text-xs opacity-70">Buy In</p>
+                            <p className="font-bold text-sm">${quoteResponse.quoteData.buyInAmountInUsd?.toFixed(2)}</p>
+                          </div>
+                        )}
+
+                        {/* Total Quote */}
+                        <div className="bg-base-100 p-2 rounded border border-base-300">
+                          <p className="text-xs opacity-70">Odds</p>
+                          <p className="font-bold text-sm">
+                            {quoteResponse.quoteData?.totalQuote?.decimal?.toFixed(2)}
+                          </p>
+                        </div>
+
+                        {/* Payout */}
+                        {quoteResponse.quoteData?.payout && (
+                          <div className="bg-base-100 p-2 rounded border border-base-300">
+                            <p className="text-xs opacity-70">Payout</p>
+                            <p className="font-bold text-sm">${quoteResponse.quoteData.payout.usd?.toFixed(2)}</p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Potential Profit - Highlighted */}
+                      {quoteResponse.quoteData?.potentialProfit && (
+                        <div className="bg-success bg-opacity-10 p-2 rounded border-2 border-success">
+                          <div className="flex justify-between items-center">
+                            <div>
+                              <p className="text-xs font-semibold">Profit</p>
+                              <p className="font-bold text-lg">
+                                ${quoteResponse.quoteData.potentialProfit.usd?.toFixed(2)}
+                              </p>
+                            </div>
+                            {quoteResponse.quoteData.potentialProfit.percentage && (
+                              <div className="badge badge-success">
+                                +{(quoteResponse.quoteData.potentialProfit.percentage * 100).toFixed(2)}%
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Available Liquidity */}
+                      {quoteResponse.liquidityData?.ticketLiquidityInUsd && (
+                        <div className="text-center">
+                          <p className="text-sm opacity-70">
+                            Available Liquidity: ${quoteResponse.liquidityData.ticketLiquidityInUsd?.toFixed(2)}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="modal-action">
+              <button className="btn" onClick={closeQuoteModal}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };
