@@ -68,7 +68,7 @@ const Home: NextPage = () => {
   const [quoteResponse, setQuoteResponse] = useState<any>(null);
   const [loadingQuote, setLoadingQuote] = useState(false);
 
-  const url = `https://api.overtime.io/overtime-v2/networks/${networkId}/markets`;
+  const apiUrl = "/api/markets";
 
   // Load markets from IndexedDB on mount
   useEffect(() => {
@@ -96,11 +96,7 @@ const Home: NextPage = () => {
   const getMarkets = async () => {
     setLoading(true);
     try {
-      const response = await fetch(url, {
-        headers: {
-          "x-api-key": process.env.NEXT_PUBLIC_OVERTIME_API_KEY || "",
-        },
-      });
+      const response = await fetch(apiUrl);
       const data = await response.json();
       console.log(data);
       setMarkets(data);
