@@ -1,12 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import type { NextPage } from "next";
 import { parseEther, parseUnits } from "viem";
 import { useAccount } from "wagmi";
-import { BugAntIcon, ChevronDownIcon, ChevronUpIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
-import { Address } from "~~/components/scaffold-eth";
+import { ChevronDownIcon, ChevronUpIcon } from "@heroicons/react/24/outline";
 import externalContracts from "~~/contracts/externalContracts";
 import { useScaffoldReadContract, useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
 import { notification } from "~~/utils/scaffold-eth";
@@ -324,11 +322,6 @@ const Home: NextPage = () => {
             <span className="block text-4xl font-bold">Sports Betting Platform</span>
           </h1>
 
-          <div className="flex justify-center items-center space-x-2 flex-col mb-6">
-            <p className="my-2 font-medium">Connected Address:</p>
-            <Address address={connectedAddress} />
-          </div>
-
           <div className="flex flex-col items-center gap-3 mb-8">
             <button onClick={getMarkets} className="btn btn-primary btn-lg" disabled={loading}>
               {loading ? (
@@ -514,27 +507,67 @@ const Home: NextPage = () => {
           )}
         </div>
 
-        <div className="bg-base-300 w-full mt-16 px-8 py-12">
-          <div className="flex justify-center items-center gap-12 flex-col md:flex-row max-w-7xl mx-auto">
-            <div className="flex flex-col bg-base-100 px-10 py-10 text-center items-center max-w-xs rounded-3xl">
-              <BugAntIcon className="h-8 w-8 fill-secondary" />
-              <p>
-                Tinker with your smart contract using the{" "}
-                <Link href="/debug" passHref className="link">
-                  Debug Contracts
-                </Link>{" "}
-                tab.
-              </p>
+        {/* About Overtime Section */}
+        <div className="bg-base-300 w-full mt-16 px-8 py-16">
+          <div className="max-w-7xl mx-auto">
+            <h2 className="text-3xl font-bold text-center mb-8">About Overtime</h2>
+
+            <div className="grid md:grid-cols-2 gap-8 mb-12">
+              <div className="card bg-base-100 shadow-xl">
+                <div className="card-body">
+                  <h3 className="card-title">What is Overtime?</h3>
+                  <p>
+                    <a
+                      href="https://www.overtime.io/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="link link-primary"
+                    >
+                      Overtime
+                    </a>{" "}
+                    is a decentralized sports betting protocol built on the blockchain. It offers transparent,
+                    permissionless sports markets with instant settlements and competitive odds across multiple sports
+                    and leagues.
+                  </p>
+                  <p className="mt-2">
+                    Powered by smart contracts on Optimism, Arbitrum, and Base, Overtime eliminates the need for
+                    traditional bookmakers and ensures trustless, verifiable betting outcomes.
+                  </p>
+                </div>
+              </div>
+
+              <div className="card bg-base-100 shadow-xl">
+                <div className="card-body">
+                  <h3 className="card-title">Features Implemented</h3>
+                  <ul className="list-disc list-inside space-y-2">
+                    <li>Browse live sports betting markets across multiple sports</li>
+                    <li>Get instant quotes for your bets with real-time odds</li>
+                    <li>Place bets directly on-chain with USDC</li>
+                    <li>Automatic USDC approval flow for seamless transactions</li>
+                    <li>View your betting history and track open/claimable/closed bets</li>
+                    <li>Persistent market data storage using IndexedDB</li>
+                  </ul>
+                </div>
+              </div>
             </div>
-            <div className="flex flex-col bg-base-100 px-10 py-10 text-center items-center max-w-xs rounded-3xl">
-              <MagnifyingGlassIcon className="h-8 w-8 fill-secondary" />
-              <p>
-                Explore your local transactions with the{" "}
-                <Link href="/blockexplorer" passHref className="link">
-                  Block Explorer
-                </Link>{" "}
-                tab.
-              </p>
+
+            <div className="flex justify-center items-center gap-6 flex-wrap">
+              <a
+                href="https://docs.overtime.io/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn btn-primary btn-lg gap-2"
+              >
+                📚 View Documentation
+              </a>
+              <a
+                href="https://www.overtime.io/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn btn-outline btn-lg gap-2"
+              >
+                🌐 Visit Overtime.io
+              </a>
             </div>
           </div>
         </div>
