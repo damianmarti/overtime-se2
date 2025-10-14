@@ -3,9 +3,13 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { NextPage } from "next";
+import { parseEther, parseUnits } from "viem";
 import { useAccount } from "wagmi";
 import { BugAntIcon, ChevronDownIcon, ChevronUpIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import { Address } from "~~/components/scaffold-eth";
+import externalContracts from "~~/contracts/externalContracts";
+import { useScaffoldReadContract, useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
+import { notification } from "~~/utils/scaffold-eth";
 
 // IndexedDB utility functions
 const DB_NAME = "OvertimeMarketsDB";
@@ -52,6 +56,11 @@ const getFromIndexedDB = async (key: string): Promise<any> => {
   });
 };
 
+const COLLATERAL_DECIMALS = 6; // USDC
+const COLLATERAL_ADDRESS = "0x0b2c639c533813f4aa9d7837caf62653d097ff85";
+const REFERRAL_ADDRESS = "0x0000000000000000000000000000000000000000";
+const SLIPPAGE = "0.01"; // 1% slippage
+
 const Home: NextPage = () => {
   const { address: connectedAddress } = useAccount();
   const networkId = 10;
@@ -67,6 +76,21 @@ const Home: NextPage = () => {
   const [selectedPosition, setSelectedPosition] = useState<number>(0);
   const [quoteResponse, setQuoteResponse] = useState<any>(null);
   const [loadingQuote, setLoadingQuote] = useState(false);
+
+  const { writeContractAsync: tradeAsync, isMining: isTrading } = useScaffoldWriteContract({
+    contractName: "SportsAMMV2",
+  });
+
+  const { writeContractAsync: approveAsync, isMining: isApproving } = useScaffoldWriteContract({
+    contractName: "USDC",
+  });
+
+  // Check USDC allowance
+  const { data: allowance, refetch: refetchAllowance } = useScaffoldReadContract({
+    contractName: "USDC",
+    functionName: "allowance",
+    args: [connectedAddress, externalContracts[10].SportsAMMV2.address],
+  });
 
   const apiUrl = "/api/markets";
 
@@ -98,7 +122,6 @@ const Home: NextPage = () => {
     try {
       const response = await fetch(apiUrl);
       const data = await response.json();
-      console.log(data);
       setMarkets(data);
       setDataSource("Overtime API");
 
@@ -218,7 +241,79 @@ const Home: NextPage = () => {
     }
   };
 
-  console.log(markets);
+  // Approve USDC for spending
+  const handleApprove = async () => {
+    if (!buyInAmount) return;
+    try {
+      const parsedBuyInAmount = parseUnits(buyInAmount, COLLATERAL_DECIMALS);
+
+      const approvalAmount = parsedBuyInAmount;
+
+      await approveAsync({
+        functionName: "approve",
+        args: [externalContracts[10].SportsAMMV2.address, approvalAmount],
+      });
+
+      // Refetch allowance after approval
+      await refetchAllowance();
+    } catch (e) {
+      console.error("Approval error", e);
+    }
+  };
+
+  // Place bet handler
+  const handlePlaceBet = async () => {
+    if (!quoteResponse || !quoteResponse.quoteData || !selectedMarket) return;
+    try {
+      const parsedBuyInAmount = parseUnits(buyInAmount, COLLATERAL_DECIMALS);
+
+      // Check if approval is needed
+      const currentAllowance = allowance || 0n;
+      if (currentAllowance < parsedBuyInAmount) {
+        console.log("Insufficient allowance. Please approve USDC first.");
+        return;
+      }
+
+      const tradeData = [
+        {
+          gameId: selectedMarket.gameId,
+          sportId: selectedMarket.subLeagueId,
+          typeId: selectedMarket.typeId,
+          maturity: selectedMarket.maturity,
+          status: selectedMarket.status,
+          line: selectedMarket.line,
+          playerId: selectedMarket.playerProps?.playerId,
+          odds: selectedMarket.odds?.map((odd: any) => parseEther(odd.normalizedImplied.toString())) || [],
+          merkleProof: selectedMarket.proof,
+          position: selectedPosition,
+          combinedPositions: selectedMarket.combinedPositions,
+          live: false,
+        },
+      ];
+
+      const normalizedImplied = quoteResponse.quoteData.totalQuote.normalizedImplied;
+      const parsedTotalQuote = parseEther(normalizedImplied.toString());
+
+      const parsedSlippage = parseEther(SLIPPAGE);
+
+      await tradeAsync({
+        functionName: "trade",
+        args: [
+          tradeData,
+          parsedBuyInAmount,
+          parsedTotalQuote,
+          parsedSlippage,
+          REFERRAL_ADDRESS,
+          COLLATERAL_ADDRESS,
+          false,
+        ],
+      });
+      closeQuoteModal();
+    } catch (e) {
+      console.error("Trade error", e);
+      notification.error("Error placing bet");
+    }
+  };
 
   return (
     <>
@@ -602,6 +697,50 @@ const Home: NextPage = () => {
                 </div>
               )}
             </div>
+
+            {/* Approve & Place Bet Buttons */}
+            {quoteResponse && !quoteResponse.error && !quoteResponse.quoteData?.error && (
+              <div className="flex flex-col gap-2 mt-4">
+                {(() => {
+                  const parsedBuyInAmount = parseUnits(buyInAmount, COLLATERAL_DECIMALS);
+                  const currentAllowance = allowance || 0n;
+                  const needsApproval = currentAllowance < parsedBuyInAmount;
+
+                  return (
+                    <>
+                      {needsApproval && (
+                        <button className="btn btn-warning w-full" onClick={handleApprove} disabled={isApproving}>
+                          {isApproving ? (
+                            <>
+                              <span className="loading loading-spinner"></span>
+                              Approving USDC...
+                            </>
+                          ) : (
+                            "Approve USDC"
+                          )}
+                        </button>
+                      )}
+                      <button
+                        className="btn btn-success w-full"
+                        onClick={handlePlaceBet}
+                        disabled={isTrading || needsApproval}
+                      >
+                        {isTrading ? (
+                          <>
+                            <span className="loading loading-spinner"></span>
+                            Placing Bet...
+                          </>
+                        ) : needsApproval ? (
+                          "Approve USDC First"
+                        ) : (
+                          "Place Bet"
+                        )}
+                      </button>
+                    </>
+                  );
+                })()}
+              </div>
+            )}
 
             <div className="modal-action">
               <button className="btn" onClick={closeQuoteModal}>
