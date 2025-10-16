@@ -106,15 +106,32 @@ const Home: NextPage = () => {
 
         // Check if cached data is valid (not an error object)
         if (savedMarkets && Object.keys(savedMarkets).length > 0 && !savedMarkets.error) {
-          setMarkets(savedMarkets);
-          if (savedTimestamp) {
-            setLastUpdated(savedTimestamp);
+          // Check if cached data is older than 5 minutes
+          const cacheAge = savedTimestamp ? Date.now() - new Date(savedTimestamp).getTime() : Infinity;
+          const fiveMinutesInMs = 5 * 60 * 1000;
+
+          if (cacheAge > fiveMinutesInMs) {
+            console.log("Cached data is older than 5 minutes, fetching fresh data from API...");
+            // Load cached data first for instant display
+            setMarkets(savedMarkets);
+            if (savedTimestamp) {
+              setLastUpdated(savedTimestamp);
+            }
+            setDataSource("Cache");
+            setInitialLoad(false);
+            // Then fetch fresh data in the background
+            await getMarkets();
+          } else {
+            setMarkets(savedMarkets);
+            if (savedTimestamp) {
+              setLastUpdated(savedTimestamp);
+            }
+            setDataSource("Cache");
+            console.log("✅ Markets loaded from IndexedDB");
+            console.log("Cached markets structure:", Object.keys(savedMarkets));
+            console.log("Total sports:", Object.keys(savedMarkets).length);
+            setInitialLoad(false);
           }
-          setDataSource("Cache");
-          console.log("✅ Markets loaded from IndexedDB");
-          console.log("Cached markets structure:", Object.keys(savedMarkets));
-          console.log("Total sports:", Object.keys(savedMarkets).length);
-          setInitialLoad(false);
         } else {
           // No cached data or cached error, fetch from API
           if (savedMarkets?.error) {
