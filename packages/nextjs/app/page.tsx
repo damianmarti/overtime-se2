@@ -437,165 +437,177 @@ const Home: NextPage = () => {
                 </button>
               </div>
 
-              {Object.entries(markets).map(([sport, sportLeagues]) => {
-                // Count markets for this sport
-                const sportMarketCount = Object.values(sportLeagues).reduce(
-                  (acc, leagues) => acc + (Array.isArray(leagues) ? leagues.length : 0),
-                  0,
-                );
-                const isSportExpanded = expandedSports.has(sport);
+              {Object.entries(markets)
+                .sort(([a], [b]) => a.localeCompare(b))
+                .map(([sport, sportLeagues]) => {
+                  // Count markets for this sport
+                  const sportMarketCount = Object.values(sportLeagues).reduce(
+                    (acc, leagues) => acc + (Array.isArray(leagues) ? leagues.length : 0),
+                    0,
+                  );
+                  const isSportExpanded = expandedSports.has(sport);
 
-                return (
-                  <div key={sport} className="space-y-4 mb-6">
-                    <div
-                      className="bg-base-200 hover:bg-base-300 rounded-xl p-4 cursor-pointer transition-all shadow-md"
-                      onClick={() => toggleSport(sport)}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="btn btn-ghost btn-sm btn-circle">
-                            {isSportExpanded ? (
-                              <ChevronUpIcon className="h-5 w-5" />
-                            ) : (
-                              <ChevronDownIcon className="h-5 w-5" />
-                            )}
+                  return (
+                    <div key={sport} className="space-y-4 mb-6">
+                      <div
+                        className="bg-base-200 hover:bg-base-300 rounded-xl p-4 cursor-pointer transition-all shadow-md"
+                        onClick={() => toggleSport(sport)}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="btn btn-ghost btn-sm btn-circle">
+                              {isSportExpanded ? (
+                                <ChevronUpIcon className="h-5 w-5" />
+                              ) : (
+                                <ChevronDownIcon className="h-5 w-5" />
+                              )}
+                            </div>
+                            <h3 className="text-xl font-bold capitalize">{sport}</h3>
                           </div>
-                          <h3 className="text-xl font-bold capitalize">{sport}</h3>
-                        </div>
-                        <div className="badge badge-primary badge-lg">
-                          {sportMarketCount} {sportMarketCount === 1 ? "market" : "markets"}
+                          <div className="badge badge-primary badge-lg">
+                            {sportMarketCount} {sportMarketCount === 1 ? "market" : "markets"}
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    {isSportExpanded &&
-                      Object.entries(sportLeagues).map(([leagueId, leagueMarkets]) => {
-                        if (!Array.isArray(leagueMarkets) || leagueMarkets.length === 0) return null;
+                      {isSportExpanded &&
+                        Object.entries(sportLeagues)
+                          .sort(([aId, aMarkets], [bId, bMarkets]) => {
+                            const aName = (Array.isArray(aMarkets) && aMarkets[0]?.leagueName) || `League ${aId}`;
+                            const bName = (Array.isArray(bMarkets) && bMarkets[0]?.leagueName) || `League ${bId}`;
+                            return aName.localeCompare(bName);
+                          })
+                          .map(([leagueId, leagueMarkets]) => {
+                            if (!Array.isArray(leagueMarkets) || leagueMarkets.length === 0) return null;
 
-                        const leagueKey = `${sport}-${leagueId}`;
-                        const isLeagueExpanded = expandedLeagues.has(leagueKey);
+                            const leagueKey = `${sport}-${leagueId}`;
+                            const isLeagueExpanded = expandedLeagues.has(leagueKey);
 
-                        return (
-                          <div key={leagueId} className="space-y-4 ml-4">
-                            <div
-                              className="bg-base-100 hover:bg-base-200 rounded-lg p-3 cursor-pointer transition-all border border-base-300 shadow-sm hover:shadow-md"
-                              onClick={() => toggleLeague(leagueKey)}
-                            >
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                  <div className="btn btn-ghost btn-xs btn-circle">
-                                    {isLeagueExpanded ? (
-                                      <ChevronUpIcon className="h-4 w-4" />
-                                    ) : (
-                                      <ChevronDownIcon className="h-4 w-4" />
-                                    )}
-                                  </div>
-                                  <h4 className="text-md font-semibold">
-                                    {leagueMarkets[0]?.leagueName || `League ${leagueId}`}
-                                  </h4>
-                                </div>
-                                <div className="badge badge-secondary">
-                                  {leagueMarkets.length} {leagueMarkets.length === 1 ? "market" : "markets"}
-                                </div>
-                              </div>
-                            </div>
-
-                            {isLeagueExpanded && (
-                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {leagueMarkets.map((market, index) => (
-                                  <div
-                                    key={index}
-                                    className="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow overflow-hidden"
-                                  >
-                                    {/* Card Header */}
-                                    <div className="bg-primary text-primary-content p-2 flex flex-col items-center justify-center">
-                                      <h3 className="text-lg font-bold text-center mb-0">{market.homeTeam}</h3>
-                                      <p className="text-xs opacity-70 my-0">vs</p>
-                                      <h3 className="text-lg font-bold text-center mb-0">{market.awayTeam}</h3>
-                                    </div>
-
-                                    {/* Sub Header */}
-                                    {market.tournamentName && (
-                                      <div className="bg-base-200 px-4 py-0 text-center">
-                                        <p className="text-sm font-semibold">{market.tournamentName}</p>
+                            return (
+                              <div key={leagueId} className="space-y-4 ml-4">
+                                <div
+                                  className="bg-base-100 hover:bg-base-200 rounded-lg p-3 cursor-pointer transition-all border border-base-300 shadow-sm hover:shadow-md"
+                                  onClick={() => toggleLeague(leagueKey)}
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                      <div className="btn btn-ghost btn-xs btn-circle">
+                                        {isLeagueExpanded ? (
+                                          <ChevronUpIcon className="h-4 w-4" />
+                                        ) : (
+                                          <ChevronDownIcon className="h-4 w-4" />
+                                        )}
                                       </div>
-                                    )}
+                                      <h4 className="text-md font-semibold">
+                                        {leagueMarkets[0]?.leagueName || `League ${leagueId}`}
+                                      </h4>
+                                    </div>
+                                    <div className="badge badge-secondary">
+                                      {leagueMarkets.length} {leagueMarkets.length === 1 ? "market" : "markets"}
+                                    </div>
+                                  </div>
+                                </div>
 
-                                    <div className="card-body relative">
-                                      {market.maturityDate && (
-                                        <div className="absolute top-2 right-2 text-xs opacity-70">
-                                          {new Date(market.maturityDate).toLocaleString([], {
-                                            month: "short",
-                                            day: "numeric",
-                                            hour: "2-digit",
-                                            minute: "2-digit",
-                                          })}
+                                {isLeagueExpanded && (
+                                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    {leagueMarkets.map((market, index) => (
+                                      <div
+                                        key={index}
+                                        className="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow overflow-hidden"
+                                      >
+                                        {/* Card Header */}
+                                        <div className="bg-primary text-primary-content p-2 flex flex-col items-center justify-center">
+                                          <h3 className="text-lg font-bold text-center mb-0">{market.homeTeam}</h3>
+                                          <p className="text-xs opacity-70 my-0">vs</p>
+                                          <h3 className="text-lg font-bold text-center mb-0">{market.awayTeam}</h3>
                                         </div>
-                                      )}
-                                      <div className="space-y-2 text-sm">
-                                        {market.odds && market.odds.length > 0 && (
-                                          <div className="mt-4">
-                                            <div
-                                              className={`grid gap-2 ${market.odds.length === 3 ? "grid-cols-3" : "grid-cols-2"}`}
-                                            >
-                                              {(market.odds.length === 3
-                                                ? [market.odds[0], market.odds[2], market.odds[1]]
-                                                : market.odds
-                                              ).map((odd: any, idx: number) => {
-                                                const labels =
-                                                  market.odds.length === 3
-                                                    ? ["Home", "Draw", "Away"]
-                                                    : ["Home", "Away"];
-                                                return (
-                                                  <div
-                                                    key={idx}
-                                                    className="bg-primary bg-opacity-10 p-3 rounded text-center"
-                                                  >
-                                                    <p className="text-xs opacity-70 mb-1">{labels[idx]}</p>
-                                                    <p className="font-bold text-lg">
-                                                      {odd?.decimal ? odd.decimal.toFixed(2) : odd?.american || "N/A"}
-                                                    </p>
-                                                  </div>
-                                                );
-                                              })}
-                                            </div>
+
+                                        {/* Sub Header */}
+                                        {market.tournamentName && (
+                                          <div className="bg-base-200 px-4 py-0 text-center">
+                                            <p className="text-sm font-semibold">{market.tournamentName}</p>
                                           </div>
                                         )}
 
-                                        <div className="card-actions justify-center mt-4">
-                                          <button
-                                            className="btn btn-primary w-full"
-                                            onClick={() => openQuoteModal(market)}
-                                          >
-                                            Place Bet
-                                          </button>
-                                        </div>
+                                        <div className="card-body relative">
+                                          {market.maturityDate && (
+                                            <div className="absolute top-2 right-2 text-xs opacity-70">
+                                              {new Date(market.maturityDate).toLocaleString([], {
+                                                month: "short",
+                                                day: "numeric",
+                                                hour: "2-digit",
+                                                minute: "2-digit",
+                                              })}
+                                            </div>
+                                          )}
+                                          <div className="space-y-2 text-sm">
+                                            {market.odds && market.odds.length > 0 && (
+                                              <div className="mt-4">
+                                                <div
+                                                  className={`grid gap-2 ${market.odds.length === 3 ? "grid-cols-3" : "grid-cols-2"}`}
+                                                >
+                                                  {(market.odds.length === 3
+                                                    ? [market.odds[0], market.odds[2], market.odds[1]]
+                                                    : market.odds
+                                                  ).map((odd: any, idx: number) => {
+                                                    const labels =
+                                                      market.odds.length === 3
+                                                        ? ["Home", "Draw", "Away"]
+                                                        : ["Home", "Away"];
+                                                    return (
+                                                      <div
+                                                        key={idx}
+                                                        className="bg-primary bg-opacity-10 p-3 rounded text-center"
+                                                      >
+                                                        <p className="text-xs opacity-70 mb-1">{labels[idx]}</p>
+                                                        <p className="font-bold text-lg">
+                                                          {odd?.decimal
+                                                            ? odd.decimal.toFixed(2)
+                                                            : odd?.american || "N/A"}
+                                                        </p>
+                                                      </div>
+                                                    );
+                                                  })}
+                                                </div>
+                                              </div>
+                                            )}
 
-                                        {/* Status badges at top left */}
-                                        <div className="absolute top-2 left-2 flex gap-1 flex-wrap max-w-[50%]">
-                                          {market.isOpen && <span className="badge badge-success badge-sm">Open</span>}
-                                          {market.isPaused && (
-                                            <span className="badge badge-warning badge-sm">Paused</span>
-                                          )}
-                                          {market.isResolved && (
-                                            <span className="badge badge-info badge-sm">Resolved</span>
-                                          )}
-                                          {market.isCancelled && (
-                                            <span className="badge badge-error badge-sm">Cancelled</span>
-                                          )}
+                                            <div className="card-actions justify-center mt-4">
+                                              <button
+                                                className="btn btn-primary w-full"
+                                                onClick={() => openQuoteModal(market)}
+                                              >
+                                                Place Bet
+                                              </button>
+                                            </div>
+
+                                            {/* Status badges at top left */}
+                                            <div className="absolute top-2 left-2 flex gap-1 flex-wrap max-w-[50%]">
+                                              {market.isOpen && (
+                                                <span className="badge badge-success badge-sm">Open</span>
+                                              )}
+                                              {market.isPaused && (
+                                                <span className="badge badge-warning badge-sm">Paused</span>
+                                              )}
+                                              {market.isResolved && (
+                                                <span className="badge badge-info badge-sm">Resolved</span>
+                                              )}
+                                              {market.isCancelled && (
+                                                <span className="badge badge-error badge-sm">Cancelled</span>
+                                              )}
+                                            </div>
+                                          </div>
                                         </div>
                                       </div>
-                                    </div>
+                                    ))}
                                   </div>
-                                ))}
+                                )}
                               </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                  </div>
-                );
-              })}
+                            );
+                          })}
+                    </div>
+                  );
+                })}
             </div>
           )}
 
