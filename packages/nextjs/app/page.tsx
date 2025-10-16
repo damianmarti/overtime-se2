@@ -112,12 +112,13 @@ const Home: NextPage = () => {
 
         // Check if cached data is valid (not an error object)
         if (savedMarkets && Object.keys(savedMarkets).length > 0 && !savedMarkets.error) {
-          // Check if cached data is older than 5 minutes
+          // Check if cached data is older than configured duration
           const cacheAge = savedTimestamp ? Date.now() - new Date(savedTimestamp).getTime() : Infinity;
-          const fiveMinutesInMs = 5 * 60 * 1000;
 
-          if (cacheAge > fiveMinutesInMs) {
-            console.log("Cached data is older than 5 minutes, fetching fresh data from API...");
+          if (cacheAge > scaffoldConfig.marketsCacheDuration) {
+            console.log(
+              `Cached data is older than ${scaffoldConfig.marketsCacheDuration / 1000 / 60} minutes, fetching fresh data from API...`,
+            );
             // Load cached data first for instant display
             setMarkets(savedMarkets);
             if (savedTimestamp) {

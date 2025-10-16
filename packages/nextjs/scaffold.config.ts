@@ -8,6 +8,7 @@ export type BaseConfig = {
   walletConnectProjectId: string;
   onlyLocalBurnerWallet: boolean;
   referralAddress: string;
+  marketsCacheDuration: number; // in milliseconds
 };
 
 export type ScaffoldConfig = BaseConfig;
@@ -37,6 +38,8 @@ const scaffoldConfig = {
   walletConnectProjectId: process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID || "3a8170812b534d0ff9d794f19a901d64",
   onlyLocalBurnerWallet: true,
   referralAddress: "0x0000000000000000000000000000000000000000",
+  // Markets cache duration in milliseconds (default: 5 minutes)
+  marketsCacheDuration: 5 * 60 * 1000,
 } as const satisfies ScaffoldConfig;
 
 export default scaffoldConfig;
