@@ -5,8 +5,7 @@ import type { NextPage } from "next";
 import { parseEther, parseUnits } from "viem";
 import { useAccount, useChainId } from "wagmi";
 import { ArrowPathIcon, ChevronDownIcon, ChevronUpIcon } from "@heroicons/react/24/outline";
-import externalContracts from "~~/contracts/externalContracts";
-import { useScaffoldReadContract, useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
+import { useDeployedContractInfo, useScaffoldReadContract, useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
 import { notification } from "~~/utils/scaffold-eth";
 
 // IndexedDB utility functions
@@ -55,7 +54,6 @@ const getFromIndexedDB = async (key: string): Promise<any> => {
 };
 
 const COLLATERAL_DECIMALS = 6; // USDC
-const COLLATERAL_ADDRESS = "0x0b2c639c533813f4aa9d7837caf62653d097ff85";
 const REFERRAL_ADDRESS = "0x0000000000000000000000000000000000000000";
 const SLIPPAGE = "0.01"; // 1% slippage
 
@@ -64,6 +62,7 @@ const Home: NextPage = () => {
   const chainId = useChainId();
   // Default to Optimism (10) if no wallet connected or if on unsupported network (e.g., mainnet)
   const networkId = chainId && chainId !== 1 ? chainId : 10;
+
   const [markets, setMarkets] = useState<Record<string, any[]>>({});
   const [loading, setLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
@@ -79,6 +78,13 @@ const Home: NextPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [initialLoad, setInitialLoad] = useState(true);
 
+  // Get contract info using hooks
+  const { data: usdcContract } = useDeployedContractInfo({ contractName: "USDC" });
+  const { data: sportsAMMContract } = useDeployedContractInfo({ contractName: "SportsAMMV2" });
+
+  const COLLATERAL_ADDRESS = usdcContract?.address;
+  const SPORTS_AMM_ADDRESS = sportsAMMContract?.address;
+
   const { writeContractAsync: tradeAsync, isMining: isTrading } = useScaffoldWriteContract({
     contractName: "SportsAMMV2",
   });
@@ -91,7 +97,7 @@ const Home: NextPage = () => {
   const { data: allowance, refetch: refetchAllowance } = useScaffoldReadContract({
     contractName: "USDC",
     functionName: "allowance",
-    args: [connectedAddress, externalContracts[10].SportsAMMV2.address],
+    args: [connectedAddress, SPORTS_AMM_ADDRESS],
   });
 
   const apiUrl = `/api/markets/${networkId}`;
@@ -306,7 +312,7 @@ const Home: NextPage = () => {
 
       await approveAsync({
         functionName: "approve",
-        args: [externalContracts[10].SportsAMMV2.address, approvalAmount],
+        args: [SPORTS_AMM_ADDRESS, approvalAmount],
       });
 
       // Refetch allowance after approval
