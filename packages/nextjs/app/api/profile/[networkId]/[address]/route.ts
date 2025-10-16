@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 
-export async function GET(request: Request, { params }: { params: Promise<{ address: string }> }) {
-  const { address } = await params;
-  const networkId = 10;
+export async function GET(request: Request, { params }: { params: Promise<{ networkId: string; address: string }> }) {
+  const { networkId, address } = await params;
   const url = `https://api.overtime.io/overtime-v2/networks/${networkId}/users/${address}/history`;
 
   try {

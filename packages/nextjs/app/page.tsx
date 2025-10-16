@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import type { NextPage } from "next";
 import { parseEther, parseUnits } from "viem";
-import { useAccount } from "wagmi";
-import { ChevronDownIcon, ChevronUpIcon } from "@heroicons/react/24/outline";
+import { useAccount, useChainId } from "wagmi";
+import { ArrowPathIcon, ChevronDownIcon, ChevronUpIcon } from "@heroicons/react/24/outline";
 import externalContracts from "~~/contracts/externalContracts";
 import { useScaffoldReadContract, useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
 import { notification } from "~~/utils/scaffold-eth";
@@ -61,7 +61,9 @@ const SLIPPAGE = "0.01"; // 1% slippage
 
 const Home: NextPage = () => {
   const { address: connectedAddress } = useAccount();
-  const networkId = 10;
+  const chainId = useChainId();
+  // Default to Optimism (10) if no wallet connected or if on unsupported network (e.g., mainnet)
+  const networkId = chainId && chainId !== 1 ? chainId : 10;
   const [markets, setMarkets] = useState<Record<string, any[]>>({});
   const [loading, setLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
@@ -74,6 +76,8 @@ const Home: NextPage = () => {
   const [selectedPosition, setSelectedPosition] = useState<number>(0);
   const [quoteResponse, setQuoteResponse] = useState<any>(null);
   const [loadingQuote, setLoadingQuote] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [initialLoad, setInitialLoad] = useState(true);
 
   const { writeContractAsync: tradeAsync, isMining: isTrading } = useScaffoldWriteContract({
     contractName: "SportsAMMV2",
@@ -90,40 +94,74 @@ const Home: NextPage = () => {
     args: [connectedAddress, externalContracts[10].SportsAMMV2.address],
   });
 
-  const apiUrl = "/api/markets";
+  const apiUrl = `/api/markets/${networkId}`;
 
-  // Load markets from IndexedDB on mount
+  // Load markets from IndexedDB on mount, or fetch from API if no cache
   useEffect(() => {
     const loadMarkets = async () => {
+      setError(null);
       try {
         const savedMarkets = await getFromIndexedDB("overtime-markets");
         const savedTimestamp = await getFromIndexedDB("overtime-markets-timestamp");
 
-        if (savedMarkets) {
+        // Check if cached data is valid (not an error object)
+        if (savedMarkets && Object.keys(savedMarkets).length > 0 && !savedMarkets.error) {
           setMarkets(savedMarkets);
           if (savedTimestamp) {
             setLastUpdated(savedTimestamp);
           }
-          setDataSource("IndexedDB");
+          setDataSource("Cache");
           console.log("✅ Markets loaded from IndexedDB");
+          console.log("Cached markets structure:", Object.keys(savedMarkets));
+          console.log("Total sports:", Object.keys(savedMarkets).length);
+          setInitialLoad(false);
+        } else {
+          // No cached data or cached error, fetch from API
+          if (savedMarkets?.error) {
+            console.log("Cached data contains error, clearing and fetching from API...");
+          } else {
+            console.log("No cached data found, fetching from API...");
+          }
+          await getMarkets();
         }
       } catch (error) {
         console.error("Error loading saved markets from IndexedDB:", error);
+        // On error, try to fetch from API
+        await getMarkets();
+      } finally {
+        setInitialLoad(false);
       }
     };
 
-    loadMarkets();
-  }, []);
+    if (networkId) {
+      loadMarkets();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [networkId]);
 
   const getMarkets = async () => {
     setLoading(true);
+    setError(null);
     try {
+      console.log("Fetching markets from:", apiUrl);
       const response = await fetch(apiUrl);
+
+      if (!response.ok) {
+        throw new Error(`API request failed with status ${response.status}`);
+      }
+
       const data = await response.json();
+
+      // Check if response is an error object
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      console.log("Markets fetched:", Object.keys(data).length, "sports");
       setMarkets(data);
       setDataSource("Overtime API");
 
-      // Save to IndexedDB with timestamp
+      // Save to IndexedDB with timestamp - only save valid market data
       const timestamp = new Date().toISOString();
       try {
         await saveToIndexedDB("overtime-markets", data);
@@ -137,6 +175,8 @@ const Home: NextPage = () => {
       }
     } catch (error) {
       console.error("Error fetching markets:", error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to fetch markets";
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -317,42 +357,48 @@ const Home: NextPage = () => {
     <>
       <div className="flex items-center flex-col grow pt-10 pb-10">
         <div className="px-5 w-full max-w-7xl">
-          <h1 className="text-center mb-8">
-            <span className="block text-2xl mb-2">Overtime Markets</span>
+          <h1 className="text-center mb-2">
             <span className="block text-4xl font-bold">Sports Betting Platform</span>
           </h1>
 
-          <div className="flex flex-col items-center gap-3 mb-8">
-            <button onClick={getMarkets} className="btn btn-primary btn-lg" disabled={loading}>
-              {loading ? (
-                <>
-                  <span className="loading loading-spinner"></span>
-                  Loading Markets...
-                </>
-              ) : (
-                "Load Markets"
-              )}
-            </button>
-
-            {lastUpdated && (
-              <div className="text-center">
-                <p className="text-sm opacity-70">Last updated: {new Date(lastUpdated).toLocaleString()}</p>
-                {dataSource && (
-                  <p className="text-xs mt-1">
-                    <span
-                      className={`badge badge-sm ${dataSource === "Overtime API" ? "badge-success" : "badge-info"}`}
-                    >
-                      Loaded from {dataSource}
-                    </span>
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
+          {(initialLoad || (loading && totalMarkets === 0)) && (
+            <div className="text-center py-12">
+              <span className="loading loading-spinner loading-lg"></span>
+              <p className="text-lg mt-4">Loading markets...</p>
+            </div>
+          )}
 
           {totalMarkets > 0 && (
-            <div className="mt-8 space-y-12">
-              <h2 className="text-2xl font-bold mb-6 text-center">Available Markets ({totalMarkets})</h2>
+            <div className="mt-4 space-y-12">
+              <h2 className="text-2xl font-bold mb-0 text-center">Available Markets ({totalMarkets})</h2>
+
+              <div className="flex items-center justify-center gap-4 mb-8 mt-0 flex-wrap">
+                {lastUpdated && (
+                  <p className="text-sm opacity-70 my-1">
+                    {dataSource && (
+                      <span
+                        className={`mr-2 badge badge-sm ${dataSource === "Overtime API" ? "badge-success" : "badge-info"}`}
+                      >
+                        Loaded from {dataSource}
+                      </span>
+                    )}
+                    Last updated: {new Date(lastUpdated).toLocaleString()}
+                  </p>
+                )}
+                <button onClick={getMarkets} className="btn btn-success btn-xs" disabled={loading}>
+                  {loading ? (
+                    <>
+                      <span className="loading loading-spinner"></span>
+                      Loading Markets...
+                    </>
+                  ) : (
+                    <>
+                      <ArrowPathIcon className="h-4 w-4" />
+                      Refresh
+                    </>
+                  )}
+                </button>
+              </div>
 
               {Object.entries(markets).map(([sport, sportLeagues]) => {
                 // Count markets for this sport
@@ -500,9 +546,18 @@ const Home: NextPage = () => {
             </div>
           )}
 
-          {totalMarkets === 0 && !loading && (
+          {error && !initialLoad && (
+            <div className="alert alert-error max-w-2xl mx-auto mb-8">
+              <span>{error}</span>
+            </div>
+          )}
+
+          {totalMarkets === 0 && !loading && !error && !initialLoad && lastUpdated && (
             <div className="text-center py-12">
-              <p className="text-lg opacity-70">No markets loaded yet. Click the button above to fetch markets.</p>
+              <p className="text-lg opacity-70">No markets available at the moment.</p>
+              <button onClick={getMarkets} className="btn btn-primary mt-4">
+                Try Again
+              </button>
             </div>
           )}
         </div>

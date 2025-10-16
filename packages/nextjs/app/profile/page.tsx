@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import type { NextPage } from "next";
-import { useAccount } from "wagmi";
-import { Address } from "~~/components/scaffold-eth";
+import { useAccount, useChainId } from "wagmi";
+import { Address, RainbowKitCustomConnectButton } from "~~/components/scaffold-eth";
 
 interface SportMarket {
   gameId: string;
@@ -65,23 +65,24 @@ interface UserHistory {
 
 const Profile: NextPage = () => {
   const { address: connectedAddress } = useAccount();
+  const networkId = useChainId();
   const [userHistory, setUserHistory] = useState<UserHistory | null>(null);
   const [loading, setLoading] = useState(false);
   const [selectedTab, setSelectedTab] = useState<"open" | "claimable" | "closed">("open");
 
   useEffect(() => {
-    if (connectedAddress) {
+    if (connectedAddress && networkId) {
       fetchUserHistory();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [connectedAddress]);
+  }, [connectedAddress, networkId]);
 
   const fetchUserHistory = async () => {
     if (!connectedAddress) return;
 
     setLoading(true);
     try {
-      const response = await fetch(`/api/profile/${connectedAddress}`);
+      const response = await fetch(`/api/profile/${networkId}/${connectedAddress}`);
       const data = await response.json();
 
       // Ensure data has the expected structure
@@ -191,14 +192,17 @@ const Profile: NextPage = () => {
           <span className="block text-4xl font-bold">My Profile</span>
         </h1>
 
-        <div className="flex justify-center items-center space-x-2 flex-col mb-6">
-          <p className="my-2 font-medium">Connected Address:</p>
-          <Address address={connectedAddress} />
-        </div>
+        {connectedAddress && (
+          <div className="flex justify-center items-center space-x-2 flex-col mb-6">
+            <p className="my-2 font-medium">Connected Address:</p>
+            <Address address={connectedAddress} />
+          </div>
+        )}
 
         {!connectedAddress ? (
           <div className="text-center py-12">
             <p className="text-lg opacity-70">Please connect your wallet to view your profile.</p>
+            <RainbowKitCustomConnectButton />
           </div>
         ) : loading ? (
           <div className="text-center py-12">

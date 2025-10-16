@@ -48,6 +48,26 @@ const externalContracts = {
       abi: ERC20_ABI as Abi,
     },
   },
+  8453: {
+    SportsAMMV2: {
+      address: "0x76923cDDE21928ddbeC4B8BFDC8143BB6d0841a8",
+      abi: SportsAMMV2ABI as Abi,
+    },
+    USDC: {
+      address: "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+      abi: ERC20_ABI as Abi,
+    },
+  },
+  42161: {
+    SportsAMMV2: {
+      address: "0xfb64E79A562F7250131cf528242CEB10fDC82395",
+      abi: SportsAMMV2ABI as Abi,
+    },
+    USDC: {
+      address: "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
+      abi: ERC20_ABI as Abi,
+    },
+  },
 } as const;
 
 export default externalContracts satisfies GenericContractsDeclaration;
