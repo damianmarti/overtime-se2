@@ -7,6 +7,7 @@ export type BaseConfig = {
   rpcOverrides?: Record<number, string>;
   walletConnectProjectId: string;
   onlyLocalBurnerWallet: boolean;
+  referralAddress: string;
 };
 
 export type ScaffoldConfig = BaseConfig;
@@ -35,6 +36,7 @@ const scaffoldConfig = {
   // .env.local for local testing, and in the Vercel/system env config for live apps.
   walletConnectProjectId: process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID || "3a8170812b534d0ff9d794f19a901d64",
   onlyLocalBurnerWallet: true,
+  referralAddress: "0x0000000000000000000000000000000000000000",
 } as const satisfies ScaffoldConfig;
 
 export default scaffoldConfig;

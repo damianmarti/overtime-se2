@@ -6,6 +6,7 @@ import { parseEther, parseUnits } from "viem";
 import { useAccount, useChainId } from "wagmi";
 import { ArrowPathIcon, ChevronDownIcon, ChevronUpIcon } from "@heroicons/react/24/outline";
 import { useDeployedContractInfo, useScaffoldReadContract, useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
+import scaffoldConfig from "~~/scaffold.config";
 import { notification } from "~~/utils/scaffold-eth";
 
 // IndexedDB utility functions
@@ -54,7 +55,6 @@ const getFromIndexedDB = async (key: string): Promise<any> => {
 };
 
 const COLLATERAL_DECIMALS = 6; // USDC
-const REFERRAL_ADDRESS = "0x0000000000000000000000000000000000000000";
 const SLIPPAGE = "0.01"; // 1% slippage
 
 const Home: NextPage = () => {
@@ -364,7 +364,7 @@ const Home: NextPage = () => {
           parsedBuyInAmount,
           parsedTotalQuote,
           parsedSlippage,
-          REFERRAL_ADDRESS,
+          scaffoldConfig.referralAddress,
           COLLATERAL_ADDRESS,
           false,
         ],
