@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { NextPage } from "next";
 import { useAccount, useChainId } from "wagmi";
 import { Address, RainbowKitCustomConnectButton } from "~~/components/scaffold-eth";
+import { useScaffoldReadContract, useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
 
 interface SportMarket {
   gameId: string;
@@ -70,6 +71,20 @@ const Profile: NextPage = () => {
   const [loading, setLoading] = useState(false);
   const [selectedTab, setSelectedTab] = useState<"open" | "claimable" | "closed">("open");
 
+  const { data: usdcBalance } = useScaffoldReadContract({
+    contractName: "USDC",
+    functionName: "balanceOf",
+    args: [connectedAddress],
+    watch: true,
+    query: {
+      enabled: !!connectedAddress,
+    },
+  });
+
+  const { writeContractAsync: resolveTicketAsync, isMining: isResolving } = useScaffoldWriteContract({
+    contractName: "SportsAMMV2",
+  });
+
   useEffect(() => {
     if (connectedAddress && networkId) {
       fetchUserHistory();
@@ -98,6 +113,19 @@ const Profile: NextPage = () => {
       setUserHistory(null);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleClaimWinnings = async (ticketAddress: string) => {
+    try {
+      await resolveTicketAsync({
+        functionName: "handleTicketResolving",
+        args: [ticketAddress, 0],
+      });
+      // Refresh user history after claiming
+      await fetchUserHistory();
+    } catch (error) {
+      console.error("Error claiming winnings:", error);
     }
   };
 
@@ -178,7 +206,20 @@ const Profile: NextPage = () => {
 
         {ticket.isClaimable && (
           <div className="card-actions justify-end mt-4">
-            <button className="btn btn-primary btn-sm">Claim Winnings</button>
+            <button
+              className="btn btn-primary btn-sm"
+              onClick={() => handleClaimWinnings(ticket.id)}
+              disabled={isResolving}
+            >
+              {isResolving ? (
+                <>
+                  <span className="loading loading-spinner loading-xs"></span>
+                  Claiming...
+                </>
+              ) : (
+                "Claim Winnings"
+              )}
+            </button>
           </div>
         )}
       </div>
@@ -194,8 +235,15 @@ const Profile: NextPage = () => {
 
         {connectedAddress && (
           <div className="flex justify-center items-center space-x-2 flex-col mb-6">
-            <p className="my-2 font-medium">Connected Address:</p>
             <Address address={connectedAddress} />
+            <div className="mt-2">
+              <p className="text-sm">
+                Balance:{" "}
+                <span className="font-semibold">
+                  {usdcBalance !== undefined ? (Number(usdcBalance) / 1e6).toFixed(2) : "..."} USDC
+                </span>
+              </p>
+            </div>
           </div>
         )}
 

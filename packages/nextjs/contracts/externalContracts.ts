@@ -2,7 +2,7 @@ import { Abi } from "abitype";
 import SportsAMMV2ABI from "~~/contracts/abis/SportsAMMV2.json";
 import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 
-// Minimal ERC20 ABI for approve function
+// Minimal ERC20 ABI
 const ERC20_ABI = [
   {
     inputs: [
@@ -20,6 +20,13 @@ const ERC20_ABI = [
       { name: "spender", type: "address" },
     ],
     name: "allowance",
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [{ name: "account", type: "address" }],
+    name: "balanceOf",
     outputs: [{ name: "", type: "uint256" }],
     stateMutability: "view",
     type: "function",
