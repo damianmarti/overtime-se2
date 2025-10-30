@@ -1,4 +1,5 @@
 import React from "react";
+import { ConnectButton } from "@rainbow-me/rainbowkit";
 
 interface MarketCardProps {
   market: {
@@ -68,9 +69,23 @@ export const MarketCard: React.FC<MarketCardProps> = ({ market, onPlaceBet }) =>
           )}
 
           <div className="card-actions justify-center mt-4">
-            <button className="btn btn-primary w-full" onClick={onPlaceBet}>
-              Place Bet
-            </button>
+            <ConnectButton.Custom>
+              {({ account, chain, openConnectModal, mounted }) => {
+                const connected = mounted && account && chain;
+                if (!connected) {
+                  return (
+                    <button className="btn btn-primary w-full" onClick={openConnectModal} type="button">
+                      Connect Wallet to Place Bet
+                    </button>
+                  );
+                }
+                return (
+                  <button className="btn btn-primary w-full" onClick={onPlaceBet}>
+                    Place Bet
+                  </button>
+                );
+              }}
+            </ConnectButton.Custom>
           </div>
 
           {/* Status badges at top left */}

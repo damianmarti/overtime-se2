@@ -1,4 +1,7 @@
+"use client";
+
 import React, { useEffect, useMemo, useState } from "react";
+import { FeelingLucky } from "./FeelingLucky";
 import { MarketCard } from "./MarketCard";
 import { useChainId } from "wagmi";
 import {
@@ -8,6 +11,7 @@ import {
   ClockIcon,
   SparklesIcon,
   Squares2X2Icon,
+  TrophyIcon,
 } from "@heroicons/react/24/outline";
 import scaffoldConfig from "~~/scaffold.config";
 
@@ -73,7 +77,7 @@ export const MarketsList: React.FC<MarketsListProps> = ({ onPlaceBet }) => {
   const [initialLoad, setInitialLoad] = useState(true);
   const [expandedSports, setExpandedSports] = useState<Set<string>>(new Set());
   const [expandedLeagues, setExpandedLeagues] = useState<Set<string>>(new Set());
-  const [activeTab, setActiveTab] = useState<"all" | "top" | "today">("all");
+  const [activeTab, setActiveTab] = useState<"all" | "top" | "today" | "lucky">("all");
 
   const apiUrl = `/api/markets/${networkId}`;
 
@@ -298,7 +302,7 @@ export const MarketsList: React.FC<MarketsListProps> = ({ onPlaceBet }) => {
               onClick={() => setActiveTab("top")}
               aria-selected={activeTab === "top"}
             >
-              <SparklesIcon className="h-4 w-4" />
+              <TrophyIcon className="h-4 w-4" />
               <span>Top Odds</span>
               <span className="badge badge-ghost badge-sm">{topMarkets.length}</span>
             </button>
@@ -311,6 +315,15 @@ export const MarketsList: React.FC<MarketsListProps> = ({ onPlaceBet }) => {
               <ClockIcon className="h-4 w-4" />
               <span>Ending Soon</span>
               <span className="badge badge-ghost badge-sm">{endingTodayMarkets.length}</span>
+            </button>
+            <button
+              role="tab"
+              className={`tab gap-2 rounded-lg ${activeTab === "lucky" ? "tab-active !bg-base-100 shadow" : "hover:bg-base-300"}`}
+              onClick={() => setActiveTab("lucky")}
+              aria-selected={activeTab === "lucky"}
+            >
+              <SparklesIcon className="h-4 w-4" />
+              <span>Feeling Lucky</span>
             </button>
           </div>
         </div>
@@ -374,6 +387,8 @@ export const MarketsList: React.FC<MarketsListProps> = ({ onPlaceBet }) => {
             )}
           </div>
         )}
+
+        {activeTab === "lucky" && <FeelingLucky endingSoonMarkets={endingTodayMarkets} networkId={networkId} />}
 
         {activeTab === "all" &&
           Object.entries(markets)
